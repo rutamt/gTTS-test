@@ -13,10 +13,14 @@ import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.tag import pos_tag
 import concurrent.futures
-from moviepy.editor import VideoFileClip, concatenate_videoclips, AudioFileClip
+from moviepy.editor import (
+    VideoFileClip,
+    concatenate_videoclips,
+    AudioFileClip,
+    CompositeAudioClip,
+)
 from concurrent.futures import ThreadPoolExecutor
-import atexit
-import tempfile
+import random
 
 nltk.download("punkt")
 nltk.download("averaged_perceptron_tagger")
@@ -143,12 +147,98 @@ def find_sentence_with_noun(noun):
     return None
 
 
+# The script for everything
+generated_script = "In a world filled with constant motion, take a moment to pause. Close your eyes and let your imagination soar."
+
+# Passing the text and language to the engine,
+# Language in which you want to convert
+language = "en"
+myobj = gTTS(text=generated_script, lang=language, slow=False)
+# Saving the converted audio in a mp3 file named welcome
+myobj.save("voiceover.mp3")
+
 # The text that you want to convert to audio
 # article_topic = input("What would you like the article to be about? ")
 
 
+#  Combines all the mp4 files in a folder
+def concatenate_mp4_files(folder="stock_footage", voiceover_file="voiceover.mp3"):
+    clips = []
+
+    # Get a list of all MP4 files in the folder
+    file_list = [file for file in os.listdir(folder) if file.endswith(".mp4")]
+
+    # Sort the file list based on the creation time
+    file_list.sort(key=lambda file: os.path.getctime(os.path.join(folder, file)))
+
+    # Get the resolution of the first video clip
+    first_clip_path = os.path.join(folder, file_list[0])
+    first_clip = VideoFileClip(first_clip_path)
+    target_resolution = first_clip.size
+
+    # Iterate over the files and load them as VideoFileClip objects
+    for i, file in enumerate(file_list):
+        filepath = os.path.join(folder, file)
+        video_clip = VideoFileClip(filepath)
+
+        # Resize the clip to the target resolution
+        video_clip = video_clip.resize(target_resolution)
+
+        duration = video_clip.duration  # Get the actual duration of the clip
+
+        # Adjust the clip's start time to match the end time of the previous clip
+        if i > 0:
+            previous_clip = clips[i - 1]
+            video_clip = video_clip.set_start(previous_clip.end)
+
+        # Trim the clip to its actual duration
+        trimmed_clip = video_clip.subclip(0, duration)
+        clips.append(trimmed_clip)
+
+    # Concatenate the clips
+    final_clip = concatenate_videoclips(clips)
+
+    # Load the voiceover file as an AudioFileClip
+    voiceover_clip = AudioFileClip(voiceover_file)
+
+    # Choose a random stock music file
+    stock_music_folder = "stock_music"
+    stock_music_files = [
+        file for file in os.listdir(stock_music_folder) if file.endswith(".mp3")
+    ]
+    random_music_file = random.choice(stock_music_files)
+    music_file_path = os.path.join(stock_music_folder, random_music_file)
+
+    # Load the random stock music file as an AudioFileClip
+    music_clip = AudioFileClip(music_file_path)
+
+    # Combine the voiceover and music into a single audio file
+    combined_audio = CompositeAudioClip(
+        [music_clip.volumex(0.6), voiceover_clip.volumex(1.0)]
+    )
+    # Set the audio of the final video clip to the combined audio
+    final_clip = final_clip.set_audio(combined_audio)
+
+    # Define the output file path for the final video
+    output_filename = "video_no_sound.mp4"
+
+    # Write the final video file
+    final_clip.write_videofile(
+        output_filename, codec="libx264", audio_codec="aac", fps=30
+    )
+
+    # for clip in clips:
+    #     clip.close()
+
+    # # Delete the video files from the folder
+    # for file in file_list:
+    #     filepath = os.path.join(folder, file)
+    #     os.remove(filepath)
+
+    return final_clip
+
+
 # generated_script = generate_script(article_topic)
-generated_script = "In a world filled with constant motion, take a moment to pause. Close your eyes and let your imagination soar."
 
 nouns = extract_nouns(generated_script)
 print("Nouns: ", nouns)
@@ -168,23 +258,6 @@ with concurrent.futures.ThreadPoolExecutor() as executor:
 # Check if any clips were found before concatenating
 if clips:
     # Concatenate all the clips together
-    final_clip = concatenate_videoclips(clips)
-
-    # Specify the output video filename
-    output_filename = "combined_video.mp4"
-
-    # Write the final concatenated video to a file
-    final_clip.write_videofile(output_filename, codec="libx264", fps=24)
-
-    # Close the final clip
-    final_clip.close()
-else:
-    print("No stock footage clips found.")
-
-# Passing the text and language to the engine,
-# Language in which you want to convert
-language = "en"
-# myobj = gTTS(text=generated_script, lang=language, slow=False)
-# Saving the converted audio in a mp3 file named
-# welcome
-# myobj.save("welcome.mp3")
+    concatenated_clip = concatenate_mp4_files()
+    output_filename = "concatenated_video.mp4"
+    concatenated_clip.write_videofile(output_filename, codec="libx264")
