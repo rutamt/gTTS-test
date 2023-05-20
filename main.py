@@ -18,6 +18,7 @@ from moviepy.editor import (
     concatenate_videoclips,
     AudioFileClip,
     CompositeAudioClip,
+    vfx,
 )
 from concurrent.futures import ThreadPoolExecutor
 import random
@@ -212,19 +213,30 @@ def concatenate_mp4_files(folder="stock_footage", voiceover_file="voiceover.mp3"
     # Load the random stock music file as an AudioFileClip
     music_clip = AudioFileClip(music_file_path)
 
+    # Trim the music clip to the duration of the voiceover
+    music_clip = music_clip.subclip(0, voiceover_clip.duration)
+
     # Combine the voiceover and music into a single audio file
     combined_audio = CompositeAudioClip(
         [music_clip.volumex(0.6), voiceover_clip.volumex(1.0)]
     )
     # Set the audio of the final video clip to the combined audio
+    # Trim the final video clip based on the duration of the voiceover
+    final_clip = final_clip.subclip(
+        0, min(final_clip.duration, voiceover_clip.duration)
+    )
     final_clip = final_clip.set_audio(combined_audio)
+
+    # Adjust the duration of the final video clip to match the voiceover duration
+
+    # Set the audio of the final video clip to the combined audio
 
     # Define the output file path for the final video
     output_filename = "video_no_sound.mp4"
 
     # Write the final video file
     final_clip.write_videofile(
-        output_filename, codec="libx264", audio_codec="aac", fps=30
+        output_filename, codec="libx264", audio_codec="aac", fps=30, remove_temp=False
     )
 
     # for clip in clips:
