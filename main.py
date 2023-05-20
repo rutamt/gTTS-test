@@ -15,7 +15,8 @@ from nltk.tag import pos_tag
 import concurrent.futures
 from moviepy.editor import VideoFileClip, concatenate_videoclips, AudioFileClip
 from concurrent.futures import ThreadPoolExecutor
-
+import atexit
+import tempfile
 
 nltk.download("punkt")
 nltk.download("averaged_perceptron_tagger")
@@ -76,53 +77,50 @@ clips = []
 
 
 def download_and_process_video(noun, duration):
-    # Generate a query using the noun
-    query = f"{noun} footage"
-
-    # Generate a script for the video using ChatGPT (assumed already generated)
-
-    # Retrieve stock footage using Pexels API
-
-    headers = {"Authorization": pexels_api_key}
-    url = f"https://api.pexels.com/videos/search?query={query}&orientation=vertical"
-
-    try:
-        with requests.get(url, headers=headers) as response:
-            response.raise_for_status()
-            json_data = response.json()
-            if json_data["videos"]:
-                video = json_data["videos"][0]
-                video_url = video["video_files"][0]["link"]
-
-                # Download the stock footage
-                video_data = requests.get(video_url).content
-                video_filename = f"{noun}.mp4"
-
-                with open(video_filename, "wb") as f:
-                    f.write(video_data)
-
-                # Clip the video based on the duration
-                video_clip = VideoFileClip(video_filename).subclip(0, duration)
-                # Wait for a short period to ensure the video clip is no longer in use
-                time.sleep(1)
-
-                # Remove the downloaded video file
-                os.remove(video_filename)
-
-                # Perform any other desired operations on the video clip
-
-                # Return the processed video clip or any other output
-                return video_clip
-
-            else:
-                print(f"No stock footage found for noun: {noun}")
-                return None
-
-    except requests.exceptions.HTTPError as err:
-        print(
-            f"Error occurred while downloading stock footage for noun: {noun}. Error: {err}"
-        )
+    # Download the stock footage
+    response = requests.get(
+        f"https://api.pexels.com/videos/search?query={noun}&orientation=portrait&size=large",
+        headers={"Authorization": pexels_api_key},
+    )
+    data = response.json()
+    if "videos" not in data:
+        print(f"No stock footage found for {noun}")
         return None
+
+    video = data["videos"][0]
+    video_url = video["video_files"][0]["link"]
+
+    # Download the video file
+    video_filename = f"stock_footage/{noun}_{video['id']}.mp4"
+    with open(video_filename, "wb") as f:
+        response = requests.get(video_url)
+        f.write(response.content)
+
+    # Trim the video to match the duration
+    video_clip = VideoFileClip(video_filename).subclip(0, duration)
+
+    # Set the output file path for the trimmed video
+    trimmed_filename = f"stock_footage/trimmed_{noun}_{video['id']}.mp4"
+
+    # Write the trimmed video to the output file
+    video_clip.write_videofile(trimmed_filename)
+
+    # Close the video clip reader
+    video_clip.reader.close()
+
+    # Check if the video has an audio track and close the audio reader if present
+    if video_clip.audio is not None:
+        video_clip.audio.reader.close_proc()
+
+    # Add the trimmed video clip to the clips list
+    clips.append(video_clip)
+    # closing video_filename before deletion
+    f.close()
+    # Clean up the video file
+    os.remove(video_filename)
+
+
+print("clips: ", clips)
 
 
 # Calculate the duration of a sentence using the audio length
@@ -134,6 +132,15 @@ def get_sentence_duration(sentence):
     audio_clip.close()
     os.remove("temp.mp3")
     return duration
+
+
+# Returns the sentence that contains the noun
+def find_sentence_with_noun(noun):
+    sentences = generated_script.split(".")
+    for sentence in sentences:
+        if noun.lower() in sentence.lower():
+            return sentence.strip()
+    return None
 
 
 # The text that you want to convert to audio
@@ -148,7 +155,7 @@ print("Nouns: ", nouns)
 with concurrent.futures.ThreadPoolExecutor() as executor:
     futures = []
     for noun in nouns:
-        duration = get_sentence_duration(noun)
+        duration = get_sentence_duration(find_sentence_with_noun(noun))
         future = executor.submit(download_and_process_video, noun, duration)
         futures.append(future)
 
