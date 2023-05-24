@@ -1,0 +1,49 @@
+#form {
+    background-color: #fff;
+    padding: 30px 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 55%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 auto;
+    /* Add this line to center the form horizontally */
+    box-sizing: border-box;
+    /* Add this line to include padding and border in the width calculation */
+}
+
+label {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+    text-align: center;
+    /* Add this line to center the label text */
+}
+
+textarea {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    resize: vertical;
+    margin-bottom: 10px;
+    padding: 5px;
+    box-sizing: border-box;
+    /* Add this line to include padding and border in the width calculation */
+}
+
+input[type="submit"] {
+    background-color: #594AFF;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: block;
+    margin: 0 auto;
+    /* Add this line to center the submit button horizontally */
+}

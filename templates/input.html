@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Input Page</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <script>
+        function showLoadingScreen() {
+            var loadingScreen = document.getElementById("loadingScreen");
+            var formDiv = document.getElementById("form");
+
+            loadingScreen.style.display = "block";
+            formDiv.style.display = "none";
+
+            // Perform your processing tasks here
+            // Once the processing is complete, you can hide the loading screen
+            // or perform any other necessary actions
+        }
+    </script>
+
+</head>
+
+<body>
+    <h1>Input Page</h1>
+    <div id="loadingScreen" style="display: none;">
+        <img src="https://media.tenor.com/On7kvXhzml4AAAAj/loading-gif.gif" alt="">
+    </div>
+    <div id="form">
+        <form method="post" action="/">
+            <label for="generated_script">Generated Script:</label>
+            <br>
+            <textarea id="generated_script" name="generated_script" rows="5" cols="50"></textarea>
+            <br>
+            <input type="submit" value="Generate Video" onclick="showLoadingScreen()">
+        </form>
+    </div>
+</body>
+
+</html>
